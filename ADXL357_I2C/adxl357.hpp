@@ -1,3 +1,12 @@
+/**
+ * @file adxl357.hpp
+ * @brief The main header file for the ADXL357 3-Axis Accelerometer
+ * @author Jason Popich - japopich
+ * 
+ * The main class declaration lives in this file for the ADXL357 class
+ * 
+ */
+
 #ifndef _ADXL357_HPP_
 #define _ADXL357_HPP_
 

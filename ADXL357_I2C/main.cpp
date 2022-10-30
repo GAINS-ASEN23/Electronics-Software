@@ -1,3 +1,13 @@
+/**
+ * @file adxl357.cpp
+ * @brief The main source file for the sample accel project
+ * @author Jason Popich - japopich
+ * 
+ * The main function and program entry is in this file
+ * 
+ */
+
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>

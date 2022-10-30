@@ -1,3 +1,12 @@
+/**
+ * @file adxl357.cpp
+ * @brief The main source file for the ADXL357 3-Axis Accelerometer
+ * @author Jason Popich - japopich
+ * 
+ * The main class definition lives in this file for the ADXL357 class
+ * 
+ */
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>

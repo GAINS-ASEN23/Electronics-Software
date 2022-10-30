@@ -1,6 +1,7 @@
 /**
  * @file adxl357_registers.h
  * @brief The main register header file for the ADXL357 3-Axis Accelerometer
+ * @author Jason Popich - japopich
  * 
  * All registers are declared and defined here for use with I2C and/or any other comms interface
  * 
