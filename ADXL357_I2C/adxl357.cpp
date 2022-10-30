@@ -16,6 +16,13 @@
 
 #define MAX_BUS 64
 
+// This function will offset the address because...
+/* !! NOTE: FOR SOME REASON THE REGISTERS ARE OFF BY 1 REGISTER, so 0x01 is actually polling 0x02 on the device... */
+uint8_t offset_addr(uint8_t addr)
+{
+    return addr - 0x01;
+}
+
 // I2C Open
 // This function opens the I2C device, and returns file
 int i2c_open(int I2CBus, uint8_t addr)
@@ -75,6 +82,8 @@ bool i2c_write(int file, uint8_t reg, uint8_t val)
 
 // I2C Read
 // Reads the specified data buffers
+/* !! NOTE: FOR SOME REASON THE REGISTERS ARE OFF BY 1 REGISTER, so 0x01 is actually polling 0x02 on the device... */
+/* WRITE IS NOT AFFECTED, BUT READING IS... USE OFFSET_ADDR() for reg you are trying to read from */
 bool i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer)
 {
 	// Make sure the buffer is declared
@@ -133,6 +142,19 @@ bool INIT_ADXL357(int I2CBus)
 	return true;
 }
 
+float get_temperature()
+{
+    // Get the temperature buffers from the accelerometer
+    uint8_t temp2 = ADXL357.buffer[offset_addr(ADXL357_TEMP2)];
+    uint8_t temp1 = ADXL357.buffer[offset_addr(ADXL357_TEMP1)];
+
+    // Combine both 8 bit registers to form one 16 bit register
+    uint16_t temp_16 = (temp2 << 8) | (temp1 & 0xFF);
+
+    // Divide by 4096 to get as float because 12bit, then apply temperature scale factor per datasheet then offset by 25C offset, and return value
+    return (((float)temp / 4096) / -9.05) + 25;
+}
+
 int main()
 {
 	// Set the I2C bus
@@ -149,7 +171,7 @@ int main()
 		int file = i2c_open(i2cbus, ADXL357_I2C_ADDR);
 
 		// Check for data in the STATUS register
-		i2c_read(file, ADXL357_STATUS, 1, ADXL357.status);
+		i2c_read(file, offset_addr(ADXL357_STATUS), 1, ADXL357.status);
 		if (ADXL357.status[0] != 0)
 		{
 			// Read the Data starting from the first register and it should auto_increment up to 0x3FF per pg. 27
@@ -159,15 +181,8 @@ int main()
 				return -1;
 			}
 
-            // Convert the temperature
-            uint8_t temp2 = ADXL357.buffer[ADXL357_TEMP2];
-            uint8_t temp1 = ADXL357.buffer[ADXL357_TEMP1];
-
-            float temp = (temp2 << 8) | temp1;
-
             // Print out the temperature
-            std::cout << "Temperature: " << temp << std::endl;
-			
+            std::cout << "Temperature: " << get_temperature() << std::endl;
 		}
 
 		// Close the I2C Buffer
