@@ -142,60 +142,24 @@ int main()
 
 	// Initialize LOOP
 	// Ctrl-C to quit
-    /*
 	while(true)
 	{
 		// Open the I2C Device
-		int file = i2c_open(i2cbus, MPL3115_I2C_ADDR);
+		int file = i2c_open(i2cbus, ADXL357_I2C_ADDR);
 
 		// Check for data in the STATUS register
-		i2c_read(file, MPL3115_STATUS, 1, ADXL357.status);
+		i2c_read(file, ADXL357_STATUS, 1, ADXL357.status);
 		if (ADXL357.status[0] != 0)
 		{
-			// Read the Data Buffer
-			if(!i2c_read(file, MPL3115_OUT_P_MSB, 5, ADXL357.buffer))
+            std::cout << "ADXL357 Status: " << ADXL357.status[0] << std::endl;
+
+			// Read the Data starting from the TEMP2 Register and it should auto_increment up to ZDATA1
+			if(!i2c_read(file, ADXL357_TEMP2, 11, ADXL357.buffer))
 			{
 				printf("Failed to read data buffers... \n");
 				return;
 			}
-
-			for (int i = 0; i < 5; i++)
-			{
-				printf("Buffer: %X ", i);
-				printf("Data: %X \n", ADXL357.buffer[i]);
-			}
-
-			// Process the Data Buffer
 			
-			// Altitude
-			int32_t alt;
-
-			alt = ((uint32_t)ADXL357.buffer[0]) << 24;
-			alt |= ((uint32_t)ADXL357.buffer[1]) << 16;
-			alt |= ((uint32_t)ADXL357.buffer[2]) << 8;
-
-			float altitude = alt;
-			altitude /= 65536.0;		
-
-			// Temperature
-			int16_t t;
-
-			t = ADXL357.buffer[3];
-			t <<= 8;
-			t |= ADXL357.buffer[4];
-			t >>= 4;
-
-			if(t & 0x800)
-			{
-				t |= 0xF000;
-			}
-
-			float temp = t;
-			temp /= 16.0;
-
-			// Print Processed Values
-			printf("Altitude: %F \n", altitude);
-			printf("Temperature: %F \n\n", temp);
 		} else
 		{
 			// printf("Data not ready... %X \n", ADXL357.status[0]);
@@ -203,8 +167,7 @@ int main()
 		// Close the I2C Buffer
 		i2c_close(file);
 	}
-	*/
 
 	// Return program
-	return;
+	return 0;
 }
