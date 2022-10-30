@@ -1,5 +1,3 @@
-#include "adxl357.hpp"
-
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -8,106 +6,205 @@
 #include <sys/ioctl.h>
 #include <stropts.h>
 #include <stdio.h>
-#include "BMA180Accelerometer.h"
-#include <iostream>
+#include <stdbool.h>
+#include <stdint.h>
 #include <math.h>
+
+#include "adxl357.hpp"
+#include "adxl357_registers.hpp"
 
 #define MAX_BUS 64
 
-ADXL357_Accel::ADXL357_Accel(int bus, int address) {
-	this->I2CBus = bus;
-	this->I2CAddress = address;
-	this->readFullSensorState();
-}
-
-void ADXL357_Accel::init_adxl357()
+// I2C Open
+// This function opens the I2C device, and returns file
+int i2c_open(int I2CBus, uint8_t addr)
 {
-	// Set the I2C Settings
-	// +- 10g with high speed mode and active low interrupt polarity pg. 39
+	// Declare I2C device name char array
+	char i2cbuf[MAX_BUS];
+
+	// Assign I2C device bus name
+	snprintf(i2cbuf, sizeof(i2cbuf), "/dev/i2c-%d", I2CBus);
+
+	// Declare File Variable
+	int file;
+
+	// Open the I2C Device
+	if ((file = open(i2cbuf, O_RDWR)) < 0)
+	{
+		printf("Failed to open I2C BUS %u \n", I2CBus);
+		return;
+	}
+
+	// Open IO operation
+	if(ioctl(file, I2C_SLAVE, addr) < 0)
+	{
+		printf("I2C_SLAVE address %X failed... \n", addr);
+		return;
+	}
+
+	// Return the file if successful
+	return file;
+}
+
+// I2C Close
+// Closes the open I2C file
+void i2c_close(int file)
+{
+	close(file);
+}
+
+
+// I2C Write
+// This I2C write function assumes that you are using a one-byte register
+// Therefore you must first write the register address and then write
+// the value for the register. The ADXL357 is using the one-byte
+// registers.
+bool i2c_write(int file, uint8_t reg, uint8_t val)
+{
+	uint8_t write_buf[2] = { reg, val };
+	if (write(file, write_buf, 2) != 2)
+	{
+		// Return error
+		printf("Error failed to write to register %X! \n", reg);
+		return false;
+	}
+	// If not, return succeeded
+	return true;
+}
+
+// I2C Read
+// Reads the specified data buffers
+bool i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer)
+{
+	// Make sure the buffer is declared
+	if (!ADXL357.buffer)
+	{
+		return false;
+	}
+
+	// Write to the register we want to read from
+	if(!i2c_write(file, reg, 1))
+	{
+		printf("Failed to write to register %X for reading... \n", reg);
+		return false;
+	}
+
+	// Read the specific number of bytes
+	if(read(file, buffer, byte_count) != byte_count)
+	{
+		printf("Failed to read from registers... \n");
+		return false;
+	}
+
+	// Return true if succeeded
+	return true;
+}
+
+// This function initializes the ADXL357 according to the datasheet
+bool INIT_ADXL357(int I2CBus)
+{
+	// Define the I2C bus that the ADXL357 is on
+
+	// Open I2C for the device address
+	int file = i2c_open(I2CBus, MPL3115_I2C_ADDR);
 	
-	// Set the power control register to measure mode with temp enabled [000...] pg. 39
-}
-
-int ADXL357_Accel::readFullSensorState(){
-
-    char namebuf[MAX_BUS];
-    snprintf(namebuf, sizeof(namebuf), "/dev/i2c-%d", I2CBus);
-    int file;
-    if ((file = open(namebuf, O_RDWR)) < 0){
-            cout << "Failed to open ADXL357 Sensor on " << namebuf << " I2C Bus" << endl;
-            return(1);
-    }
-    if (ioctl(file, I2C_SLAVE, I2CAddress) < 0){
-            cout << "I2C_SLAVE address " << I2CAddress << " failed..." << endl;
-            return(2);
-    }
-
-    
-
-    //this->accelerationX = convertAcceleration(ACC_X_MSB, ACC_X_LSB);
-    //this->accelerationY = convertAcceleration(ACC_Y_MSB, ACC_Y_LSB);
-    //this->accelerationZ = convertAcceleration(ACC_Z_MSB, ACC_Z_LSB);
-    //this->calculatePitchAndRoll();
-    return 0;
-}
-
-int ADXL357_Accel::convertAcceleration(int msb_reg_addr, int lsb_reg_addr){
-	short temp = dataBuffer[msb_reg_addr];
-	temp = (temp<<8) | dataBuffer[lsb_reg_addr];
-	temp = temp>>2;
-	temp = ~temp + 1;
-	return temp;
-}
-
-//  Temperature in 2's complement has a resolution of 0.5K/LSB
-//  80h is lowest temp - approx -40C and 00000010 is 25C in 2's complement
-//  this value is offset at room temperature - 25C and accurate to 0.5K
-
-float BMA180Accelerometer::getTemperature(){
-
-	int offset = -40;  // -40 degrees C
-	this->readFullSensorState();
-	char temp = dataBuffer[TEMP]; // = -80C 0b10000000  0b00000010; = +25C
-	//char temp = this->readI2CDeviceByte(TEMP);
-	//this->readFullSensorState();
-    //char temp = dataBuffer[TEMP];
-	int temperature;
-	if(temp&0x80)	{
-		temp = ~temp + 0b00000001;
-		temperature = 128 - temp;
+	// Set the ADXL357_RANGE register
+    // Settings: 10g - RESERVED - Active Low - High Speed
+    // Value: 01 0000 0 1 -> 0x41
+	if(!i2c_write(file, ADXL357_RANGE, 0x41))
+	{
+		printf("Failed to set ADXL357 Range Register... \n");
+		return false;
 	}
-	else {
-		temperature = 128 + temp;
+
+	// Set the ADXL357_POWER_CTL Register
+    // Settings: Measurement Mode - Temp On - Default DRDY - RESERVED
+    // Value: 0 0 0 00000
+	if(!i2c_write(file, ADXL357_POWER_CTL, 0x00))
+	{
+		printf("Failed to switch output on ADXL357 to Measurement Mode... \n");
+		return false;
 	}
-	this->temperature = offset + ((float)temperature*0.5f);
-	//cout << "The temperature is " << this->temperature << endl;
-	//int temp_off = dataBuffer[0x37]>>1;
-	//cout << "Temperature offset raw value is: " << temp_off << endl;
-	return this->temperature;
+
+	// Close the I2C file
+	i2c_close(file);
+
+	return true;
 }
 
-int ADXL357_Accel::i2c_write(char address, char value){
+int main()
+{
+	// Set the I2C bus
+	int i2cbus = 2;
+	
+	// Initialize the ADXL357
+	INIT_ADXL357(i2cbus);
 
-    cout << "Starting  I2C state write" << endl;
-    char namebuf[MAX_BUS];
-    snprintf(namebuf, sizeof(namebuf), "/dev/i2c-%d", I2CBus);
-    int file;
-    if ((file = open(namebuf, O_RDWR)) < 0){
-            cout << "Failed to open ADXL357 Sensor on " << namebuf << " I2C Bus" << endl;
-            return(1);
-    }
-    if (ioctl(file, I2C_SLAVE, I2CAddress) < 0){
-            cout << "I2C_SLAVE address " << I2CAddress << " failed..." << endl;
-            return(2);
-    }
+	// Initialize LOOP
+	// Ctrl-C to quit
+    /*
+	while(true)
+	{
+		// Open the I2C Device
+		int file = i2c_open(i2cbus, MPL3115_I2C_ADDR);
 
-    char buffer[2];
-    	buffer[0] = address;
-    	buffer[1] = value;
-    if ( write(file, buffer, 2) != 2) {
-        cout << "Failure to write values to I2C Device address." << endl;
-        return(3);
-    }
-    close(file);
-    return 0;
+		// Check for data in the STATUS register
+		i2c_read(file, MPL3115_STATUS, 1, ADXL357.status);
+		if (ADXL357.status[0] != 0)
+		{
+			// Read the Data Buffer
+			if(!i2c_read(file, MPL3115_OUT_P_MSB, 5, ADXL357.buffer))
+			{
+				printf("Failed to read data buffers... \n");
+				return;
+			}
+
+			for (int i = 0; i < 5; i++)
+			{
+				printf("Buffer: %X ", i);
+				printf("Data: %X \n", ADXL357.buffer[i]);
+			}
+
+			// Process the Data Buffer
+			
+			// Altitude
+			int32_t alt;
+
+			alt = ((uint32_t)ADXL357.buffer[0]) << 24;
+			alt |= ((uint32_t)ADXL357.buffer[1]) << 16;
+			alt |= ((uint32_t)ADXL357.buffer[2]) << 8;
+
+			float altitude = alt;
+			altitude /= 65536.0;		
+
+			// Temperature
+			int16_t t;
+
+			t = ADXL357.buffer[3];
+			t <<= 8;
+			t |= ADXL357.buffer[4];
+			t >>= 4;
+
+			if(t & 0x800)
+			{
+				t |= 0xF000;
+			}
+
+			float temp = t;
+			temp /= 16.0;
+
+			// Print Processed Values
+			printf("Altitude: %F \n", altitude);
+			printf("Temperature: %F \n\n", temp);
+		} else
+		{
+			// printf("Data not ready... %X \n", ADXL357.status[0]);
+		}
+		// Close the I2C Buffer
+		i2c_close(file);
+	}
+	*/
+
+	// Return program
+	return;
 }
