@@ -16,22 +16,39 @@
 
 #define MAX_BUS 64
 
-// This function will offset the address because...
+ADXL357::ADXL357(int i2cbus_in, int device_addr_in, int range_in, int scale_factor_in)
+{
+    // Set the configuration values
+    this->i2cbus = i2cbus_in;
+    this->device_addr = device_addr_in;
+    this->range = range_in;
+    this->scale_factor = scale_factor_in;
+
+    // Initialize the ADXL357
+    this->init_adxl357();
+}
+
+ADXL357::~ADXL357()
+{
+
+}
+
+// This function will offset the address by 0x01 because...
 /* !! NOTE: FOR SOME REASON THE REGISTERS ARE OFF BY 1 REGISTER, so 0x01 is actually polling 0x02 on the device... */
-uint8_t offset_addr(uint8_t addr)
+uint8_t ADXL357::offset_addr(uint8_t addr)
 {
     return addr - 0x01;
 }
 
 // I2C Open
 // This function opens the I2C device, and returns file
-int i2c_open(int I2CBus, uint8_t addr)
+int ADXL357::i2c_open()
 {
 	// Declare I2C device name char array
 	char i2cbuf[MAX_BUS];
 
 	// Assign I2C device bus name
-	snprintf(i2cbuf, sizeof(i2cbuf), "/dev/i2c-%d", I2CBus);
+	snprintf(i2cbuf, sizeof(i2cbuf), "/dev/i2c-%d", this->i2cbus);
 
 	// Declare File Variable
 	int file;
@@ -39,14 +56,14 @@ int i2c_open(int I2CBus, uint8_t addr)
 	// Open the I2C Device
 	if ((file = open(i2cbuf, O_RDWR)) < 0)
 	{
-		printf("Failed to open I2C BUS %u \n", I2CBus);
+		printf("Failed to open I2C BUS %u \n", this->i2cbus);
 		return -1;
 	}
 
 	// Open IO operation
-	if(ioctl(file, I2C_SLAVE, addr) < 0)
+	if(ioctl(file, I2C_SLAVE, this->device_addr) < 0)
 	{
-		printf("I2C_SLAVE address %X failed... \n", addr);
+		printf("I2C_SLAVE address %X failed... \n", this->device_addr);
 		return -1;
 	}
 
@@ -56,7 +73,7 @@ int i2c_open(int I2CBus, uint8_t addr)
 
 // I2C Close
 // Closes the open I2C file
-void i2c_close(int file)
+void ADXL357::i2c_close(int file)
 {
 	close(file);
 }
@@ -67,7 +84,7 @@ void i2c_close(int file)
 // Therefore you must first write the register address and then write
 // the value for the register. The ADXL357 is using the one-byte
 // registers.
-bool i2c_write(int file, uint8_t reg, uint8_t val)
+bool ADXL357::i2c_write(int file, uint8_t reg, uint8_t val)
 {
 	uint8_t write_buf[2] = { reg, val };
 	if (write(file, write_buf, 2) != 2)
@@ -84,10 +101,10 @@ bool i2c_write(int file, uint8_t reg, uint8_t val)
 // Reads the specified data buffers
 /* !! NOTE: FOR SOME REASON THE REGISTERS ARE OFF BY 1 REGISTER, so 0x01 is actually polling 0x02 on the device... */
 /* WRITE IS NOT AFFECTED, BUT READING IS... USE OFFSET_ADDR() for reg you are trying to read from */
-bool i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer)
+bool ADXL357::i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer)
 {
 	// Make sure the buffer is declared
-	if (!ADXL357.buffer)
+	if (!this->buffer)
 	{
 		return false;
 	}
@@ -111,12 +128,12 @@ bool i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer)
 }
 
 // This function initializes the ADXL357 according to the datasheet
-bool INIT_ADXL357(int I2CBus)
+bool ADXL357::init_adxl357()
 {
 	// Define the I2C bus that the ADXL357 is on
 
 	// Open I2C for the device address
-	int file = i2c_open(I2CBus, ADXL357_I2C_ADDR);
+	int file = i2c_open(this->i2cbus, ADXL357_I2C_ADDR);
 	
 	// Set the ADXL357_RANGE register
     // Settings: 10g - RESERVED - Active Low - High Speed
@@ -142,76 +159,78 @@ bool INIT_ADXL357(int I2CBus)
 	return true;
 }
 
-float get_temperature()
+void ADXL357::calculate_temperature()
 {
     // Get the temperature buffers from the accelerometer
-    uint8_t temp2 = ADXL357.buffer[offset_addr(ADXL357_TEMP2)];
-    uint8_t temp1 = ADXL357.buffer[offset_addr(ADXL357_TEMP1)];
+    uint8_t temp2 = this->buffer[offset_addr(ADXL357_TEMP2)];
+    uint8_t temp1 = this->buffer[offset_addr(ADXL357_TEMP1)];
 
     // Combine both 8 bit registers to form one 16 bit register
     uint16_t temp_16 = (temp2 << 8) | (temp1 & 0xFF);
 
-    // Divide by 4096 to get as float because 12bit, then apply temperature scale factor per datasheet then offset by 25C offset, and return value
-    return (((float)temp_16 / 4096) / -9.05) + 25;
+    // Divide by 4096 to get as double because 12bit, then apply temperature scale factor per datasheet then offset by 25C offset, and store value
+    this->temperature = (((double)temp_16 / 4096) / -9.05) + 25;
 }
 
-float get_accelerations()
+void ADXL357::calculate_accelerations()
 {
-    // Range is set to +- 10.0g;
-    float range = 10.0;
-
-    // Scale Factor for ADXL357, [micro-g / LSB]
-    float scale_factor = 19.5;
+    // Get the configuration values
+    int local_range = this->range;
+    int local_scale = this->scale_factor;
 
     // Get the X Data buffers
-    uint8_t x_data3 = ADXL357.buffer[offset_addr(ADXL357_XDATA3)];
-    uint8_t x_data2 = ADXL357.buffer[offset_addr(ADXL357_XDATA2)];
-    uint8_t x_data1 = ADXL357.buffer[offset_addr(ADXL357_XDATA1)];
+    uint8_t x_data3 = this->buffer[offset_addr(ADXL357_XDATA3)];
+    uint8_t x_data2 = this->buffer[offset_addr(ADXL357_XDATA2)];
+    uint8_t x_data1 = this->buffer[offset_addr(ADXL357_XDATA1)];
 
-    uint32_t x_data = ((xdata3 << 16) & 0xFF) | ((xdata2 << 8) & 0xFF) | ((xdata1 << 0) & 0xFF);
+    // Get the Y Data buffers
+    uint8_t y_data3 = this->buffer[offset_addr(ADXL357_YDATA3)];
+    uint8_t y_data2 = this->buffer[offset_addr(ADXL357_YDATA2)];
+    uint8_t y_data1 = this->buffer[offset_addr(ADXL357_YDATA1)];
 
-    return ((float)x_data * (range * scale_factor)) / 1000000.0;
+    // Get the Y Data buffers
+    uint8_t z_data3 = this->buffer[offset_addr(ADXL357_ZDATA3)];
+    uint8_t z_data2 = this->buffer[offset_addr(ADXL357_ZDATA2)];
+    uint8_t z_data1 = this->buffer[offset_addr(ADXL357_ZDATA1)];
 
-    // Get the Y Data buffer
+    // Move the bits around according to the datasheet
+    uint32_t x_data = ((x_data3 << 16) & 0xFF) | ((x_data2 << 8) & 0xFF) | ((x_data1 << 0) & 0xFF);
+    uint32_t y_data = ((y_data3 << 16) & 0xFF) | ((y_data2 << 8) & 0xFF) | ((y_data1 << 0) & 0xFF);
+    uint32_t z_data = ((z_data3 << 16) & 0xFF) | ((z_data2 << 8) & 0xFF) | ((z_data1 << 0) & 0xFF);
+
+    // Convert and store the accelerations
+    this->x_accel = ((double)x_data * (local_range * local_scale)) / 1000000.0;
+    this->y_accel = ((double)y_data * (local_range * local_scale)) / 1000000.0;
+    this->z_accel = ((double)z_data * (local_range * local_scale)) / 1000000.0;
 }
 
-int main()
+void ADXL357::process()
 {
-	// Set the I2C bus
-	int i2cbus = 2;
-	
-	// Initialize the ADXL357
-	INIT_ADXL357(i2cbus);
+	// Open the I2C Device
+	int file = i2c_open(this->i2cbus, this->device_addr);
 
-	// Initialize LOOP
-	// Ctrl-C to quit
-	while(true)
+	// Check for data in the STATUS register
+	i2c_read(file, offset_addr(ADXL357_STATUS), 1, this->status);
+	if (this->status[0] != 0)
 	{
-		// Open the I2C Device
-		int file = i2c_open(i2cbus, ADXL357_I2C_ADDR);
-
-		// Check for data in the STATUS register
-		i2c_read(file, offset_addr(ADXL357_STATUS), 1, ADXL357.status);
-		if (ADXL357.status[0] != 0)
+		// Read the Data starting from the first register and it should auto_increment up to 0x3FF per pg. 27
+		if(!i2c_read(file, ADXL357_DEVID_AD, ADXL357_I2C_BUFFER, this->buffer))
 		{
-			// Read the Data starting from the first register and it should auto_increment up to 0x3FF per pg. 27
-			if(!i2c_read(file, ADXL357_DEVID_AD, ADXL357_I2C_BUFFER, ADXL357.buffer))
-			{
-				printf("Failed to read data buffers... \n");
-				return -1;
-			}
-
-            // Print out the temperature
-            std::cout << "Temperature: " << get_temperature() << std::endl;
-
-            // Print out the accelerations
-            std::cout << "Acceleration: " get_accelerations() << std::endl;
+			printf("Failed to read data buffers... \n");
 		}
 
-		// Close the I2C Buffer
-		i2c_close(file);
+        // Get the temperature
+        this->calculate_temperature();
+
+        // Get the accelerations
+        this->calculate_accelerations();
 	}
 
-	// Return program
-	return 0;
+	// Close the I2C Buffer
+	i2c_close(file);
+}
+
+void ADXL357::print_vars()
+{
+    std::cout << "Temp: " << this->temperature << " degC X_accel: " << this->x_accel << " g Y_ACCEL: " << this->y_accel << " g Z_ACCEL: " << this->z_accel << std::endl;
 }

@@ -1,20 +1,72 @@
 #ifndef _ADXL357_HPP_
 #define _ADXL357_HPP_
 
-// Define the Data Buffer Size using the Datasheet (48 buffers because going to 2f)
-#define ADXL357_I2C_BUFFER 0x3FF
+// Includes
+#include "adxl357_registers.hpp"
 
-// Define the Data Struct to hold the data from the ADXL357
-struct ADXL357_data {
-	// Status Buffer
-	uint8_t status[1];
+class ADXL357
+{
+	public:
+		/* CLASS FUNCTIONS */
 
-	// Data Buffer
-	uint8_t buffer[ADXL357_I2C_BUFFER];
+		// Constructor
+		ADXL357(int i2cbus_in, int device_addr_in, int range_in, int scale_factor_in);
+
+		// Destructor
+		~ADXL357();
+
+		/* FUNCTIONS */
+
+		// Print Variables
+		void print_vars();
+
+		// I2C FUNCTIONS
+		uint8_t offset_addr(uint8_t addr);
+
+		int i2c_open(int I2CBus, uint8_t addr);
+		void i2c_close(int file);
+		bool i2c_write(int file, uint8_t reg, uint8_t val);
+		bool i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer);
+
+		// ADXL357 Specific Functions
+		bool init_adxl357();
+		void calculate_temperature();
+		void calculate_accelerations();
+		void process();
+
+		// Getters and Setters
+
+		double get_temp()		{ return this->temperature; };					// Returns the temperature in [ degC ]
+		double get_x_accel() 	{ return this->x_accel; };						// Returns the x acceleration in [ g ]
+		double get_y_accel()	{ return this->y_accel; };						// Returns the y acceleration in [ g ]
+		double get_z_accel();	{ return this->z_accel; }						// Returns the z acceleration in [ g ]
+
+
+	private:
+
+		/* I2C VARIABLES */
+		int i2cbus {0};							// The I2C Bus that the device is on
+		uint8_t device_addr {0};				// The I2C Device address
+
+		/* CONFIGURATION VARIABLES */
+		int range {0};
+		int scale_factor {0};
+
+		/* DATA BUFFER VARIABLES */
+
+		uint8_t status[1];						// Status Buffer that will hold the status register values
+		uint8_t buffer[ADXL357_I2C_BUFFER];		// Data Buffer that holds every register from the ADXL357
 	
-	// Data Variables
-	double pressure;
-	double temperature;
-} ADXL357;
+		/* SENSOR READINGS - Converted */
+
+		double temperature {0};					// Temperature [ degC ]
+		
+		double x_accel {0};						// X-Axis Acceleration [ g ]
+		double y_accel {0};						// Y-Axis Acceleration [ g ]
+		double z_accel {0};						// Z-Axis Acceleration [ g ]
+		
+
+	protected:
+};
 
 #endif

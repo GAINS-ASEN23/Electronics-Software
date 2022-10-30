@@ -9,6 +9,9 @@
 #ifndef _ADXL357_REGISTERS_HPP_
 #define _ADXL357_REGISTERS_HPP_
 
+// Define the Data Buffer Size using the Datasheet (which specifies that it goes to 0x3FF)
+#define ADXL357_I2C_BUFFER 0x3FF
+
 //-------------------------------------------------------
 //                  ADXL357 Registers
 //-------------------------------------------------------
