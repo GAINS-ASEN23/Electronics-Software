@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
+#include <iostream>
 
 #include "adxl357.hpp"
 #include "adxl357_registers.hpp"
@@ -151,19 +152,24 @@ int main()
 		i2c_read(file, ADXL357_STATUS, 1, ADXL357.status);
 		if (ADXL357.status[0] != 0)
 		{
-            std::cout << "ADXL357 Status: " << ADXL357.status[0] << std::endl;
-
-			// Read the Data starting from the TEMP2 Register and it should auto_increment up to ZDATA1
-			if(!i2c_read(file, ADXL357_TEMP2, 11, ADXL357.buffer))
+			// Read the Data starting from the first register and it should auto_increment up to 0x3FF per pg. 27
+			if(!i2c_read(file, ADXL357_DEVID_AD, ADXL357_I2C_BUFFER, ADXL357.buffer))
 			{
 				printf("Failed to read data buffers... \n");
-				return;
+				return -1;
 			}
+
+            // Convert the temperature
+            uint8_t temp2 = ADXL357.buffer[ADXL357_TEMP2];
+            uint8_t temp1 = ADXL357.buffer[ADXL357_TEMP1];
+
+            float temp = (temp2 << 8) | temp1;
+
+            // Print out the temperature
+            std::cout << "Temperature: " << temp << std::endl;
 			
-		} else
-		{
-			// printf("Data not ready... %X \n", ADXL357.status[0]);
 		}
+
 		// Close the I2C Buffer
 		i2c_close(file);
 	}
