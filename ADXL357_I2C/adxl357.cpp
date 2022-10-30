@@ -152,7 +152,20 @@ float get_temperature()
     uint16_t temp_16 = (temp2 << 8) | (temp1 & 0xFF);
 
     // Divide by 4096 to get as float because 12bit, then apply temperature scale factor per datasheet then offset by 25C offset, and return value
-    return (((float)temp / 4096) / -9.05) + 25;
+    return (((float)temp_16 / 4096) / -9.05) + 25;
+}
+
+
+float get_accelerations()
+{
+    // Get the X Data buffers
+    uint8_t xdata3 = ADXL357.buffer[offset_addr(ADXL357_XDATA3)];
+    uint8_t xdata2 = ADXL357.buffer[offset_addr(ADXL357_XDATA2)];
+    uint8_t xdata1 = ADXL357.buffer[offset_addr(ADXL357_XDATA1)];
+
+    uint32_t xdata = (xdata3 << )
+
+    // Get the Y Data buffer
 }
 
 int main()
