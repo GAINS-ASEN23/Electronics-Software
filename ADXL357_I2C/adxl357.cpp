@@ -32,14 +32,14 @@ int i2c_open(int I2CBus, uint8_t addr)
 	if ((file = open(i2cbuf, O_RDWR)) < 0)
 	{
 		printf("Failed to open I2C BUS %u \n", I2CBus);
-		return;
+		return -1;
 	}
 
 	// Open IO operation
 	if(ioctl(file, I2C_SLAVE, addr) < 0)
 	{
 		printf("I2C_SLAVE address %X failed... \n", addr);
-		return;
+		return -1;
 	}
 
 	// Return the file if successful
@@ -106,7 +106,7 @@ bool INIT_ADXL357(int I2CBus)
 	// Define the I2C bus that the ADXL357 is on
 
 	// Open I2C for the device address
-	int file = i2c_open(I2CBus, MPL3115_I2C_ADDR);
+	int file = i2c_open(I2CBus, ADXL357_I2C_ADDR);
 	
 	// Set the ADXL357_RANGE register
     // Settings: 10g - RESERVED - Active Low - High Speed
