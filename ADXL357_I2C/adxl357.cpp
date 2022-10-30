@@ -155,7 +155,6 @@ float get_temperature()
     return (((float)temp_16 / 4096) / -9.05) + 25;
 }
 
-
 float get_accelerations()
 {
     // Get the X Data buffers
