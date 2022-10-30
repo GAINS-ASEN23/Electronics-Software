@@ -23,7 +23,7 @@ class ADXL357
 		// I2C FUNCTIONS
 		uint8_t offset_addr(uint8_t addr);
 
-		int i2c_open(int I2CBus, uint8_t addr);
+		int i2c_open();
 		void i2c_close(int file);
 		bool i2c_write(int file, uint8_t reg, uint8_t val);
 		bool i2c_read(int file, uint8_t reg, unsigned int byte_count, uint8_t *buffer);
@@ -39,7 +39,7 @@ class ADXL357
 		double get_temp()		{ return this->temperature; };					// Returns the temperature in [ degC ]
 		double get_x_accel() 	{ return this->x_accel; };						// Returns the x acceleration in [ g ]
 		double get_y_accel()	{ return this->y_accel; };						// Returns the y acceleration in [ g ]
-		double get_z_accel();	{ return this->z_accel; }						// Returns the z acceleration in [ g ]
+		double get_z_accel()	{ return this->z_accel; };						// Returns the z acceleration in [ g ]
 
 
 	private:
