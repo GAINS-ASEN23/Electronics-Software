@@ -133,7 +133,7 @@ bool ADXL357::init_adxl357()
 	// Define the I2C bus that the ADXL357 is on
 
 	// Open I2C for the device address
-	int file = i2c_open(this->i2cbus, ADXL357_I2C_ADDR);
+	int file = this->i2c_open();
 	
 	// Set the ADXL357_RANGE register
     // Settings: 10g - RESERVED - Active Low - High Speed
@@ -207,7 +207,7 @@ void ADXL357::calculate_accelerations()
 void ADXL357::process()
 {
 	// Open the I2C Device
-	int file = i2c_open(this->i2cbus, this->device_addr);
+	int file = this->i2c_open();
 
 	// Check for data in the STATUS register
 	i2c_read(file, offset_addr(ADXL357_STATUS), 1, this->status);
