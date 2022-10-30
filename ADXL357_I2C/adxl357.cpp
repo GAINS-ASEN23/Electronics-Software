@@ -157,12 +157,20 @@ float get_temperature()
 
 float get_accelerations()
 {
-    // Get the X Data buffers
-    uint8_t xdata3 = ADXL357.buffer[offset_addr(ADXL357_XDATA3)];
-    uint8_t xdata2 = ADXL357.buffer[offset_addr(ADXL357_XDATA2)];
-    uint8_t xdata1 = ADXL357.buffer[offset_addr(ADXL357_XDATA1)];
+    // Range is set to +- 10.0g;
+    float range = 10.0;
 
-    uint32_t xdata = (xdata3 << )
+    // Scale Factor for ADXL357, [micro-g / LSB]
+    float scale_factor = 19.5;
+
+    // Get the X Data buffers
+    uint8_t x_data3 = ADXL357.buffer[offset_addr(ADXL357_XDATA3)];
+    uint8_t x_data2 = ADXL357.buffer[offset_addr(ADXL357_XDATA2)];
+    uint8_t x_data1 = ADXL357.buffer[offset_addr(ADXL357_XDATA1)];
+
+    uint32_t x_data = ((xdata3 << 16) & 0xFF) | ((xdata2 << 8) & 0xFF) | ((xdata1 << 0) & 0xFF);
+
+    return ((float)x_data * (range * scale_factor)) / 1000000.0;
 
     // Get the Y Data buffer
 }
@@ -195,6 +203,9 @@ int main()
 
             // Print out the temperature
             std::cout << "Temperature: " << get_temperature() << std::endl;
+
+            // Print out the accelerations
+            std::cout << "Acceleration: " get_accelerations() << std::endl;
 		}
 
 		// Close the I2C Buffer
