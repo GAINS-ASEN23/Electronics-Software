@@ -152,7 +152,7 @@ float get_temperature()
     uint16_t temp_16 = (temp2 << 8) | (temp1 & 0xFF);
 
     // Divide by 4096 to get as float because 12bit, then apply temperature scale factor per datasheet then offset by 25C offset, and return value
-    return (((float)temp / 4096) / -9.05) + 25;
+    return (((float)temp_16 / 4096) / -9.05) + 25;
 }
 
 int main()
