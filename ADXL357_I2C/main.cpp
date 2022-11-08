@@ -36,6 +36,10 @@ int main(int argc, char** argv)
 	// Initialize the ADXL357
 	ADXL357 adxl357(i2cbus, ADXL357_I2C_ADDR, g_range, scale_factor);
 
+	// Open a file to save data to
+	FILE *foutput;
+	adxl357.open_file(&foutput);
+
 	// Loop to pull data, press CTRL-C to end
 	while(true)
 	{
@@ -44,7 +48,13 @@ int main(int argc, char** argv)
 
 		// Print the sensor data
 		adxl357.print_vars();
+
+		// Save the sensor data to a file
+		adxl357.add_line(foutput);
 	}
+
+	// Close the save file
+	fclose(foutput);
 
 	// Return program
 	return 0;

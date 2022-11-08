@@ -20,6 +20,10 @@
 #include <math.h>
 #include <iostream>
 
+#include <time.h>
+#include <string.h>
+#include <chrono>
+
 #include "adxl357.hpp"
 #include "adxl357_registers.hpp"
 
@@ -243,3 +247,39 @@ void ADXL357::print_vars()
 {
     std::cout << "Temp: " << this->temperature << " degC X_accel: " << this->x_accel << " g Y_ACCEL: " << this->y_accel << " g Z_ACCEL: " << this->z_accel << std::endl;
 }
+
+void ADXL357::open_file(FILE *foutput)
+{
+	// Desynchronize C++ standard streams
+	std::ios_base::sync_with_stdio(false);
+
+	// Stop the flushing of std::cout before std::cin accepts an input
+	cin.tie(NULL);
+
+	// Current time in seconds
+	uint64_t sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    
+	// Convert time to string
+	char timestr[100];
+    sprintf(timestr, "%d", sec);
+
+	// Compose filename including path to SD card and timestamp to ensure unique
+    char fname[100] = "/mnt/extsd/ADXL357_DATA_";
+    char csv[] = ".csv";
+	strcat(fname, timestr);
+    strcat(fname, csv);
+
+	// Open a file with fname, write only
+	foutput = fopen(fname, "w");
+
+	// Print header to file
+	fprintf(foutput, "Temp [deg C],X_accel [g],Y_accel [g],Z_accel [g]\n");
+}
+
+void ADXL357::add_line(FILE *foutput)
+{
+	fprintf(foutput, "%d,%d,%d,%d\n", this->temperature, this->x_accel, this->y_accel, this->z_accel);
+}
+
+
+
