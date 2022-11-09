@@ -251,10 +251,10 @@ void ADXL357::print_vars()
 void ADXL357::open_file(FILE *foutput)
 {
 	// Desynchronize C++ standard streams
-	std::ios_base::sync_with_stdio(false);
+	// std::ios_base::sync_with_stdio(false);
 
 	// Stop the flushing of std::cout before std::cin accepts an input
-	cin.tie(NULL);
+	// cin.tie(NULL);
 
 	// Current time in seconds
 	uint64_t sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -269,6 +269,7 @@ void ADXL357::open_file(FILE *foutput)
 	strcat(fname, timestr);
     strcat(fname, csv);
 
+	
 	// Open a file with fname, write only
 	foutput = fopen(fname, "w");
 
