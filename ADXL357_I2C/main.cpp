@@ -34,8 +34,8 @@ FILE* init_bruh()
     sprintf(timestr, "%d", sec);
 
 	// Compose filename including path to SD card and timestamp to ensure unique
-    //char fname[100] = "/mnt/extsd/ADXL357_DATA_";
-	char fname[100] = "DATA_";
+    char fname[100] = "/mnt/extsd/ADXL357_DATA_";
+	// char fname[100] = "DATA_";
     char csv[] = ".csv";
 	strcat(fname, timestr);
     strcat(fname, csv);
@@ -66,13 +66,15 @@ int main(int argc, char** argv)
 	ADXL357 adxl357(i2cbus, ADXL357_I2C_ADDR, g_range, scale_factor);
 
 	// Open a file to save data to
-	FILE *foutput = init_bruh()
+	FILE *foutput = init_bruh();
+	std::cout << "Initialized, bruh.........." << std::endl;
 
 	// Loop to pull data, press CTRL-C to end
 	while(true)
 	{
 		// Process the sensor data
 		adxl357.process();
+
 
 		// Print the sensor data
 		// adxl357.print_vars();

@@ -38,7 +38,8 @@ FILE* init_bruh()
 
 void add_line(FILE *foutput)
 {
-	fprintf(foutput, "Temp [deg C],X_accel [g],Y_accel [g],Z_accel [g]\n");
+    double dummy = 0.03952;
+	fprintf(foutput, "%f\n", dummy);
 }
 
 

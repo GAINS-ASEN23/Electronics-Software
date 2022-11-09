@@ -264,7 +264,7 @@ void ADXL357::open_file(FILE *foutput)
     sprintf(timestr, "%d", sec);
 
 	// Compose filename including path to SD card and timestamp to ensure unique
-    char fname[100] = "/mnt/extsd/ADXL357_DATA_";
+    char fname[100] = "/mnt/extsd/DATA_";
     char csv[] = ".csv";
 	strcat(fname, timestr);
     strcat(fname, csv);
@@ -279,7 +279,7 @@ void ADXL357::open_file(FILE *foutput)
 
 void ADXL357::add_line(FILE *foutput)
 {
-	fprintf(foutput, "%d,%d,%d,%d\n", this->temperature, this->x_accel, this->y_accel, this->z_accel);
+	fprintf(foutput, "%f,%f,%f,%f\n", this->temperature, this->x_accel, this->y_accel, this->z_accel);
 }
 
 
