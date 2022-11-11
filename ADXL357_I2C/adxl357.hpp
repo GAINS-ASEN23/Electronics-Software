@@ -50,6 +50,9 @@ class ADXL357
 		double get_y_accel()	{ return this->y_accel; };						// Returns the y acceleration in [ g ]
 		double get_z_accel()	{ return this->z_accel; };						// Returns the z acceleration in [ g ]
 
+		// Save to SD card
+		void open_file(FILE *foutput); 			// Save file init
+		void add_line(FILE *foutput); 			// Print data to file
 
 	private:
 

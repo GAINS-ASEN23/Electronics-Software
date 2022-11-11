@@ -20,6 +20,10 @@
 #include <math.h>
 #include <iostream>
 
+#include <time.h>
+#include <string.h>
+#include <chrono>
+
 #include "adxl357.hpp"
 #include "adxl357_registers.hpp"
 
@@ -174,11 +178,11 @@ void ADXL357::calculate_temperature()
     uint8_t temp2 = this->buffer[offset_addr(ADXL357_TEMP2)];
     uint8_t temp1 = this->buffer[offset_addr(ADXL357_TEMP1)];
 
-    // Combine both 8 bit registers to form one 16 bit register
-    uint16_t temp_16 = (temp2 << 8) | (temp1 & 0xFF);
+    // Combine both 8 bit registers to form one 16 bit register inside a 32bit int
+    int32_t temp_32 = ((temp2 << 8) | (temp1 & 0xFF));
 
-    // Divide by 4096 to get as double because 12bit, then apply temperature scale factor per datasheet then offset by 25C offset, and store value
-    this->temperature = (((double)temp_16 / 4096) / -9.05) + 25;
+    // Convert from LSB to deg C
+    this->temperature = (((double)temp_32 - 1885) / 9.05) + 25;
 }
 
 void ADXL357::calculate_accelerations()
@@ -197,20 +201,21 @@ void ADXL357::calculate_accelerations()
     uint8_t y_data2 = this->buffer[offset_addr(ADXL357_YDATA2)];
     uint8_t y_data1 = this->buffer[offset_addr(ADXL357_YDATA1)];
 
-    // Get the Y Data buffers
+    // Get the Z Data buffers
     uint8_t z_data3 = this->buffer[offset_addr(ADXL357_ZDATA3)];
     uint8_t z_data2 = this->buffer[offset_addr(ADXL357_ZDATA2)];
     uint8_t z_data1 = this->buffer[offset_addr(ADXL357_ZDATA1)];
 
+
     // Move the bits around according to the datasheet
-    uint32_t x_data = ((x_data3 << 16) & 0xFF) | ((x_data2 << 8) & 0xFF) | ((x_data1 << 0) & 0xFF);
-    uint32_t y_data = ((y_data3 << 16) & 0xFF) | ((y_data2 << 8) & 0xFF) | ((y_data1 << 0) & 0xFF);
-    uint32_t z_data = ((z_data3 << 16) & 0xFF) | ((z_data2 << 8) & 0xFF) | ((z_data1 << 0) & 0xFF);
+    int32_t x_data = (((x_data3 << 16) | (x_data2 << 8) | (x_data1 << 0)) << 8) >> 12;
+    int32_t y_data = (((y_data3 << 16) | (y_data2 << 8) | (y_data1 << 0)) << 8) >> 12;
+    int32_t z_data = (((z_data3 << 16) | (z_data2 << 8) | (z_data1 << 0)) << 8) >> 12;
 
     // Convert and store the accelerations
-    this->x_accel = ((double)x_data * (local_range * local_scale)) / 1000000.0;
-    this->y_accel = ((double)y_data * (local_range * local_scale)) / 1000000.0;
-    this->z_accel = ((double)z_data * (local_range * local_scale)) / 1000000.0;
+    this->x_accel = ((double)x_data * (local_scale)) / 1000000.0;
+    this->y_accel = ((double)y_data * (local_scale)) / 1000000.0;
+    this->z_accel = ((double)z_data * (local_scale)) / 1000000.0;
 }
 
 void ADXL357::process()
@@ -243,3 +248,40 @@ void ADXL357::print_vars()
 {
     std::cout << "Temp: " << this->temperature << " degC X_accel: " << this->x_accel << " g Y_ACCEL: " << this->y_accel << " g Z_ACCEL: " << this->z_accel << std::endl;
 }
+
+void ADXL357::open_file(FILE *foutput)
+{
+	// Desynchronize C++ standard streams
+	// std::ios_base::sync_with_stdio(false);
+
+	// Stop the flushing of std::cout before std::cin accepts an input
+	// cin.tie(NULL);
+
+	// Current time in seconds
+	uint64_t sec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    
+	// Convert time to string
+	char timestr[100];
+    sprintf(timestr, "%d", sec);
+
+	// Compose filename including path to SD card and timestamp to ensure unique
+    char fname[100] = "/mnt/extsd/DATA_";
+    char csv[] = ".csv";
+	strcat(fname, timestr);
+    strcat(fname, csv);
+
+	
+	// Open a file with fname, write only
+	foutput = fopen(fname, "w");
+
+	// Print header to file
+	fprintf(foutput, "Temp [deg C],X_accel [g],Y_accel [g],Z_accel [g]\n");
+}
+
+void ADXL357::add_line(FILE *foutput)
+{
+	fprintf(foutput, "%f,%f,%f,%f\n", this->temperature, this->x_accel, this->y_accel, this->z_accel);
+}
+
+
+
